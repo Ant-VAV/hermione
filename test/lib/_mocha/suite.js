@@ -10,8 +10,8 @@ module.exports = class Suite extends EventEmitter {
     constructor(parent) {
         super();
 
-        this._parent = parent;
-        this._title = 'suite-title';
+        this.parent = parent;
+        this.title = 'suite-title';
 
         this._beforeAll = [];
         this._beforeEach = [];
@@ -20,38 +20,11 @@ module.exports = class Suite extends EventEmitter {
         this._tests = [];
         this._suites = [];
 
-        this._ctx = {};
-
-        this.addBeforeAllHook = this.beforeAll;
-        this.addBeforeEachHook = this.beforeEach;
-        this.addAfterEachHook = this.afterEach;
-        this.addAfterAllHook = this.afterAll;
-
-        this._beforeAllErrors = [];
-        this._beforeEachErrors = [];
-        this._testErrors = [];
-        this._afterEachErrors = [];
-        this._afterAllErrors = [];
+        this.ctx = {};
     }
 
     static create(parent) {
         return new this(parent);
-    }
-
-    get title() {
-        return this._title;
-    }
-
-    set title(title) {
-        this._title = title;
-    }
-
-    get parent() {
-        return this._parent;
-    }
-
-    set parent(parent) {
-        this._parent = parent;
     }
 
     get tests() {
@@ -76,14 +49,6 @@ module.exports = class Suite extends EventEmitter {
 
     get afterAllHooks() {
         return this._afterAll;
-    }
-
-    get ctx() {
-        return this._ctx;
-    }
-
-    set ctx(ctx) {
-        this._ctx = ctx;
     }
 
     fullTitle() {
@@ -167,29 +132,9 @@ module.exports = class Suite extends EventEmitter {
 
     }
 
-    get beforeAllErrors() {
-        return this._beforeAllErrors;
-    }
-
-    get beforeEachErrors() {
-        return this._beforeEachErrors;
-    }
-
-    get testErrors() {
-        return this._testErrors;
-    }
-
-    get afterEachErrors() {
-        return this._afterEachErrors;
-    }
-
-    get afterAllErrors() {
-        return this._afterAllErrors;
-    }
-
     run() {
         return q()
-            .then(this._execRunnables(this.beforeAllHooks, this.beforeAllErrors))
+            .then(this._execRunnables(this.beforeAllHooks))
             .then(() => this.tests.reduce((acc, test) => {
                 return acc
                     .then(() => {
@@ -198,20 +143,20 @@ module.exports = class Suite extends EventEmitter {
                         this.beforeEachHooks.forEach(setContextToHook);
                         this.afterEachHooks.forEach(setContextToHook);
                     })
-                    .then(this._execRunnables(this.beforeEachHooks, this.beforeEachErrors))
+                    .then(this._execRunnables(this.beforeEachHooks))
                     .then(() => test.run())
-                    .catch((error) => this.testErrors.push(error))
-                    .then(this._execRunnables(this.afterEachHooks, this.afterEachErrors));
+                    .catch((error) => this.emit('fail', {error, test}))
+                    .then(this._execRunnables(this.afterEachHooks));
             }, q()))
             .then(this._execRunnables(this.suites, []))
-            .then(this._execRunnables(this.afterAllHooks, this.afterAllErrors));
+            .then(this._execRunnables(this.afterAllHooks));
     }
 
-    _execRunnables(runnables, errorCollection) {
+    _execRunnables(runnables) {
         return () => runnables.reduce((acc, runnable) => {
             return acc
                 .then(() => runnable.run())
-                .catch((error) => errorCollection.push(error));
+                .catch((error) => this.emit('fail', {error, runnable}));
         }, q());
     }
 };

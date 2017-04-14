@@ -4,14 +4,16 @@ const Suite = require('./suite');
 const Test = require('./test');
 
 class Mocha {
-    __constructor() {
-        // needs for stub ability
-    }
-
     constructor(options) {
-        this.__constructor(options);
         this._suite = Suite.create();
         this.constructor._instance = this;
+
+        this.constructor.prototype.addFile = sinon.stub();
+        this.constructor.prototype.loadFiles = sinon.stub();
+        this.constructor.prototype.reporter = sinon.stub();
+        this.constructor.prototype.fullTrace = sinon.stub();
+
+        this.constructorArgs = options;
     }
 
     static getInstance() {
@@ -37,22 +39,6 @@ class Mocha {
     updateSuiteTree(cb) {
         this._suite = cb(this._suite);
         return this;
-    }
-
-    addFile() {
-        // needs for stub ability
-    }
-
-    loadFiles() {
-        // needs for stub ability
-    }
-
-    reporter() {
-        // needs for stub ability
-    }
-
-    fullTrace() {
-        // needs for stub ability
     }
 }
 
