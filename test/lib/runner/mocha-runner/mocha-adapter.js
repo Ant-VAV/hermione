@@ -138,7 +138,8 @@ describe('mocha-runner/mocha-adapter', () => {
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => suite.addTest('some-test'))
-                .execute(() => assert.calledOnce(browserAgent.getBrowser));
+                .run()
+                .then(() => assert.calledOnce(browserAgent.getBrowser));
         });
 
         it('should not request browsers for suite with one skipped test', () => {
@@ -146,7 +147,8 @@ describe('mocha-runner/mocha-adapter', () => {
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => suite.addTest('some-test', _.noop, {skipped: true}))
-                .execute(() => assert.notCalled(browserAgent.getBrowser));
+                .run()
+                .then(() => assert.notCalled(browserAgent.getBrowser));
         });
 
         it('should request browsers for suite with at least one non-skipped test', () => {
@@ -158,7 +160,8 @@ describe('mocha-runner/mocha-adapter', () => {
                         .addTest('some-skipped-title', _.noop, {skipped: true})
                         .addTest('some-title');
                 })
-                .execute(() => assert.calledOnce(browserAgent.getBrowser));
+                .run()
+                .then(() => assert.calledOnce(browserAgent.getBrowser));
         });
 
         it('should not request browsers for suite with nested skipped tests', () => {
@@ -173,7 +176,8 @@ describe('mocha-runner/mocha-adapter', () => {
                                 .addTest('test2', _.noop, {skipped: true})
                         );
                 })
-                .execute(() => assert.notCalled(browserAgent.getBrowser));
+                .run()
+                .then(() => assert.notCalled(browserAgent.getBrowser));
         });
 
         it('should release browser after suite execution', () => {
@@ -185,7 +189,8 @@ describe('mocha-runner/mocha-adapter', () => {
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => suite.addTest('some-title'))
-                .execute(() => {
+                .run()
+                .then(() => {
                     assert.calledOnce(browserAgent.freeBrowser);
                     assert.calledWith(browserAgent.freeBrowser, browser);
                 });
@@ -217,7 +222,8 @@ describe('mocha-runner/mocha-adapter', () => {
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => suite.addTest('some-title'))
-                .execute(() => {
+                .run()
+                .then(() => {
                     process.nextTick(() => {
                         assert.calledOnce(logger.warn);
                         assert.calledWithMatch(logger.warn, /some-error/);
@@ -239,9 +245,10 @@ describe('mocha-runner/mocha-adapter', () => {
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => suite.addTest('some-test'))
-                .execute((mochaStub) => {
+                .run()
+                .then((suite) => {
                     assert.called(Skip.prototype.handleEntity);
-                    assert.calledWith(Skip.prototype.handleEntity, mochaStub.suite.tests[0]);
+                    assert.calledWith(Skip.prototype.handleEntity, suite.tests[0]);
                 });
         });
 
@@ -250,9 +257,10 @@ describe('mocha-runner/mocha-adapter', () => {
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => suite.addSuite(MochaStub.Suite.create(suite)))
-                .execute((mochaStub) => {
+                .run()
+                .then((suite) => {
                     assert.called(Skip.prototype.handleEntity);
-                    assert.calledWith(Skip.prototype.handleEntity, mochaStub.suite.suites[0]);
+                    assert.calledWith(Skip.prototype.handleEntity, suite.suites[0]);
                 });
         });
     });
@@ -289,8 +297,9 @@ describe('mocha-runner/mocha-adapter', () => {
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => suite.addTest('some-title'))
-                .execute((mochaStub) => {
-                    const runnable = mochaStub.suite.tests[0];
+                .run()
+                .then((suite) => {
+                    const runnable = suite.tests[0];
                     assert.includeMembers(
                         _.keys(browser.publicAPI.executionContext), _.keys(runnable));
                 });
@@ -306,8 +315,9 @@ describe('mocha-runner/mocha-adapter', () => {
                     nestedSuite.addTest('nested-test');
                     return suite;
                 })
-                .execute((mochaStub) => {
-                    const test = mochaStub.suite.suites[0].tests[0];
+                .run()
+                .then((suite) => {
+                    const test = suite.suites[0].tests[0];
                     assert.includeMembers(
                         _.keys(browser.publicAPI.executionContext),
                         _.keys(test)
@@ -322,7 +332,8 @@ describe('mocha-runner/mocha-adapter', () => {
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => suite.addTest('some-title'))
-                .execute(() => {
+                .run()
+                .then(() => {
                     assert.property(browser.publicAPI.executionContext, 'browserId', 'some-browser');
                 });
         });
@@ -334,7 +345,8 @@ describe('mocha-runner/mocha-adapter', () => {
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => suite.addTest('some-title'))
-                .execute(() => assert.property(Object.getPrototypeOf(browser.publicAPI), 'executionContext'));
+                .run()
+                .then(() => assert.property(Object.getPrototypeOf(browser.publicAPI), 'executionContext'));
         });
     });
 
@@ -459,7 +471,8 @@ describe('mocha-runner/mocha-adapter', () => {
             attachEmitFn_(sinon.spy());
 
             MochaStub.getInstance()
-                .execute(() => {
+                .run()
+                .then(() => {
                     const getBrowser = ProxyReporter.prototype.__constructor.lastCall.args[1];
                     assert.equal(browser, getBrowser());
                 });
@@ -552,7 +565,8 @@ describe('mocha-runner/mocha-adapter', () => {
                         .addBeforeAllHook(sandbox.stub().throws(new Error('some-error')))
                         .addTest('some-test', originalTestFn);
                 })
-                .execute(() => assert.notCalled(originalTestFn));
+                .run()
+                .then(() => assert.notCalled(originalTestFn));
         });
 
         it('should fail suite tests with error thrown from "before" hook', () => {
@@ -564,7 +578,8 @@ describe('mocha-runner/mocha-adapter', () => {
                         .addBeforeAllHook(sandbox.stub().throws(error))
                         .addTest('some-test');
                 })
-                .execute((mochaStub) => assert.equal(mochaStub.suite.testErrors[0], error));
+                .run()
+                .then((suite) => assert.equal(suite.testErrors[0], error));
         });
 
         it('should handle async "before hook" errors', () => {
@@ -576,7 +591,8 @@ describe('mocha-runner/mocha-adapter', () => {
                         .addBeforeAllHook(sandbox.stub().returns(q.reject(error)))
                         .addTest('some-test');
                 })
-                .execute((mochaStub) => assert.equal(mochaStub.suite.testErrors[0], error));
+                .run()
+                .then((suite) => assert.equal(suite.testErrors[0], error));
         });
 
         it('should not execute original "before each" hook functionality if "before" hook failed', () => {
@@ -589,7 +605,8 @@ describe('mocha-runner/mocha-adapter', () => {
                         .addBeforeEachHook(beforeEachHookFn)
                         .addTest('some-test');
                 })
-                .execute(() => assert.notCalled(beforeEachHookFn));
+                .run()
+                .then(() => assert.notCalled(beforeEachHookFn));
         });
 
         it('should fail "before each" hook with error from before hook', () => {
@@ -602,7 +619,8 @@ describe('mocha-runner/mocha-adapter', () => {
                         .addBeforeEachHook(sandbox.stub().returns(true))
                         .addTest('some-test');
                 })
-                .execute((mochaStub) => assert.equal(mochaStub.suite.beforeEachErrors[0], beforeAllError));
+                .run()
+                .then((suite) => assert.equal(suite.beforeEachErrors[0], beforeAllError));
         });
     });
 
@@ -623,7 +641,8 @@ describe('mocha-runner/mocha-adapter', () => {
                         .addBeforeEachHook(sandbox.stub().throws(new Error('some-error')))
                         .addTest('some-test', originalTestFn);
                 })
-                .execute(() => assert.notCalled(originalTestFn));
+                .run()
+                .then(() => assert.notCalled(originalTestFn));
         });
 
         it('should execute original suite test if "before each hook was executed successfully"', () => {
@@ -635,7 +654,8 @@ describe('mocha-runner/mocha-adapter', () => {
                         .addBeforeEachHook(sandbox.stub())
                         .addTest('some-test', originalTestFn);
                 })
-                .execute(() => assert.called(originalTestFn));
+                .run()
+                .then(() => assert.called(originalTestFn));
         });
 
         it('should fail test with error from "before each" hook', () => {
@@ -647,7 +667,8 @@ describe('mocha-runner/mocha-adapter', () => {
                         .addBeforeEachHook(sandbox.stub().throws(error))
                         .addTest('some-test', sinon.spy());
                 })
-                .execute((mochaStub) => assert.equal(mochaStub.suite.testErrors[0], error));
+                .run()
+                .then((suite) => assert.equal(suite.testErrors[0], error));
         });
 
         it('should handle async "before each" hook errors', () => {
@@ -659,7 +680,8 @@ describe('mocha-runner/mocha-adapter', () => {
                         .addBeforeEachHook(sandbox.stub().returns(q.reject(error)))
                         .addTest('some-test', sinon.spy());
                 })
-                .execute((mochaStub) => assert.equal(mochaStub.suite.testErrors[0], error));
+                .run()
+                .then((suite) => assert.equal(suite.testErrors[0], error));
         });
 
         it('should run another tests in suite after "before each" hook failed', () => {
@@ -677,7 +699,8 @@ describe('mocha-runner/mocha-adapter', () => {
                         .addTest('first', testFn1)
                         .addTest('second', testFn2);
                 })
-                .execute(() => {
+                .run()
+                .then(() => {
                     assert.notCalled(testFn1);
                     assert.called(testFn2);
                 });

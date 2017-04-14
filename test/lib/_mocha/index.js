@@ -26,12 +26,8 @@ class Mocha {
         return Suite;
     }
 
-    run(cb) {
-        return process.nextTick(cb);
-    }
-
-    execute(cb) {
-        return this.suite.run().then(() => cb(this));
+    run() {
+        return this.suite.run().then(() => this.suite);
     }
 
     get suite() {
