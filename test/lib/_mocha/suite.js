@@ -90,46 +90,46 @@ module.exports = class Suite extends EventEmitter {
         return this.title;
     }
 
-    beforeAll(callback) {
+    beforeAll(cb) {
         return this._createHook({
             title: 'before all',
             collection: this.beforeAllHooks,
             event: 'beforeAll',
-            callback
+            cb
         });
     }
 
-    beforeEach(callback) {
+    beforeEach(cb) {
         return this._createHook({
             title: 'before each',
             collection: this.beforeEachHooks,
             event: 'beforeEach',
-            callback
+            cb
         });
     }
 
-    afterEach(callback) {
+    afterEach(cb) {
         return this._createHook({
             title: 'after each',
             collection: this.afterEachHooks,
             event: 'afterEach',
-            callback
+            cb
         });
     }
 
-    afterAll(callback) {
+    afterAll(cb) {
         return this._createHook({
             title: 'after all',
             collection: this.afterAllHooks,
             event: 'afterAll',
-            callback
+            cb
         });
     }
 
     _createHook(props) {
         const hook = Runnable.create(this);
         hook.title = props.title;
-        hook.fn = props.callback;
+        hook.fn = props.cb;
 
         props.collection.push(hook);
         this.emit(props.event, hook);
@@ -208,7 +208,7 @@ module.exports = class Suite extends EventEmitter {
     }
 
     _execRunnables(runnables, errorCollection) {
-        return () => _.reduce(runnables, (acc, runnable) => {
+        return () => runnables.reduce((acc, runnable) => {
             return acc
                 .then(() => runnable.run())
                 .catch((error) => errorCollection.push(error));

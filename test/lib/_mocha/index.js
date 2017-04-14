@@ -3,7 +3,7 @@
 const Suite = require('./suite');
 const Test = require('./test');
 
-module.exports = class Mocha {
+class Mocha {
     __constructor() {
         // needs for stub ability
     }
@@ -11,6 +11,11 @@ module.exports = class Mocha {
     constructor(options) {
         this.__constructor(options);
         this._suite = Suite.create();
+        this.constructor._instance = this;
+    }
+
+    static getInstance() {
+        return this._instance;
     }
 
     static get Test() {
@@ -33,8 +38,8 @@ module.exports = class Mocha {
         return this._suite;
     }
 
-    updateSuiteTree(callback) {
-        this._suite = callback(this._suite);
+    updateSuiteTree(cb) {
+        this._suite = cb(this._suite);
         return this;
     }
 
@@ -53,5 +58,6 @@ module.exports = class Mocha {
     fullTrace() {
         // needs for stub ability
     }
-};
+}
 
+module.exports = Mocha;
