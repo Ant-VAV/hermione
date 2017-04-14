@@ -140,7 +140,7 @@ describe('mocha-runner/mocha-adapter', () => {
             mkMochaAdapter_();
 
             return MochaStub.getInstance()
-                .updateSuiteTree((suite) => suite.addTest('some-test', _.noop, {skipped: true}))
+                .updateSuiteTree((suite) => suite.addTest({skipped: true}))
                 .run()
                 .then(() => assert.notCalled(browserAgent.getBrowser));
         });
@@ -166,8 +166,8 @@ describe('mocha-runner/mocha-adapter', () => {
                     return suite
                         .addSuite(
                             MochaStub.Suite.create(suite)
-                                .addTest('test1', _.noop, {skipped: true})
-                                .addTest('test2', _.noop, {skipped: true})
+                                .addTest({skipped: true})
+                                .addTest({skipped: true})
                         );
                 })
                 .run()
@@ -366,8 +366,8 @@ describe('mocha-runner/mocha-adapter', () => {
 
             MochaStub.getInstance().updateSuiteTree((suite) => {
                 return suite
-                    .addTest('test1')
-                    .addTest('test2');
+                    .addTest({title: 'test1'})
+                    .addTest({title: 'test2'});
             });
 
             const tests = MochaStub.getInstance().suite.tests;
@@ -386,8 +386,8 @@ describe('mocha-runner/mocha-adapter', () => {
 
             MochaStub.getInstance().updateSuiteTree((suite) => {
                 return suite
-                    .addTest('test1')
-                    .addTest('test2');
+                    .addTest({title: 'test1'})
+                    .addTest({title: 'test2'});
             });
 
             const tests = MochaStub.getInstance().suite.tests;
@@ -418,8 +418,8 @@ describe('mocha-runner/mocha-adapter', () => {
                 MochaStub.getInstance()
                     .updateSuiteTree((suite) => {
                         return suite
-                            .addTest('test-title', _.noop, {file: 'some/path/file.js'})
-                            .addTest('test-title', _.noop, {file: 'other/path/file.js'});
+                            .addTest({title: 'test-title', file: 'some/path/file.js'})
+                            .addTest({title: 'test-title', file: 'other/path/file.js'});
                     });
             }, /with the same title: 'suite-title test-title'(.+) file: 'some\/path\/file.js'/);
         });
@@ -672,7 +672,7 @@ describe('mocha-runner/mocha-adapter', () => {
                 .updateSuiteTree((suite) => {
                     return suite
                         .beforeEach(sandbox.stub())
-                        .addTest('some-test', originalTestFn);
+                        .addTest({title: 'some-test', cb: originalTestFn});
                 })
                 .run()
                 .then(() => assert.called(originalTestFn));
@@ -686,7 +686,7 @@ describe('mocha-runner/mocha-adapter', () => {
                 .updateSuiteTree((suite) => {
                     const _suite = suite
                         .beforeEach(sandbox.stub().throws(error))
-                        .addTest('some-test');
+                        .addTest({title: 'some-test'});
 
                     _suite.on('fail', onErrorSpy);
                     return _suite;
@@ -732,8 +732,8 @@ describe('mocha-runner/mocha-adapter', () => {
                 .updateSuiteTree((suite) => {
                     return suite
                         .beforeEach(beforeEachHookStub)
-                        .addTest('first', testFn1)
-                        .addTest('second', testFn2);
+                        .addTest({title: 'first', cb: testFn1})
+                        .addTest({title: 'second', cb: testFn2});
                 })
                 .run()
                 .then(() => {

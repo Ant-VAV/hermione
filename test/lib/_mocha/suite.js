@@ -35,30 +35,14 @@ module.exports = class Suite extends EventEmitter {
         return this._suites;
     }
 
-    get beforeAllHooks() {
-        return this._beforeAll;
-    }
-
-    get beforeEachHooks() {
-        return this._beforeEach;
-    }
-
-    get afterEachHooks() {
-        return this._afterEach;
-    }
-
-    get afterAllHooks() {
-        return this._afterAll;
-    }
-
     fullTitle() {
-        return this.title;
+        return `${this.parent.title} ${this.title}`;
     }
 
     beforeAll(cb) {
         return this._createHook({
             title: 'before all',
-            collection: this.beforeAllHooks,
+            collection: this._beforeAll,
             event: 'beforeAll',
             cb
         });
@@ -67,7 +51,7 @@ module.exports = class Suite extends EventEmitter {
     beforeEach(cb) {
         return this._createHook({
             title: 'before each',
-            collection: this.beforeEachHooks,
+            collection: this._beforeEach,
             event: 'beforeEach',
             cb
         });
@@ -76,7 +60,7 @@ module.exports = class Suite extends EventEmitter {
     afterEach(cb) {
         return this._createHook({
             title: 'after each',
-            collection: this.afterEachHooks,
+            collection: this._afterEach,
             event: 'afterEach',
             cb
         });
@@ -85,7 +69,7 @@ module.exports = class Suite extends EventEmitter {
     afterAll(cb) {
         return this._createHook({
             title: 'after all',
-            collection: this.afterAllHooks,
+            collection: this._afterAll,
             event: 'afterAll',
             cb
         });
@@ -101,15 +85,15 @@ module.exports = class Suite extends EventEmitter {
         return this;
     }
 
-    addTest(title, callback, options) {
-        callback = callback || _.noop;
-        options = _.defaults(options || {}, {skipped: false, file: null});
+    addTest(options) {
+        options = options || {};
 
         const test = Test.create(this);
-        test.fn = callback;
-        test.title = title;
-        test.file = options.file;
-        test.pending = options.skipped;
+
+        test.title = options.title || 'some-test';
+        test.fn = options.cb || _.noop;
+        test.file = options.file || null;
+        test.pending = options.skipped || false;
 
         this.tests.push(test);
         this.emit('test', test);
@@ -128,28 +112,26 @@ module.exports = class Suite extends EventEmitter {
         this.tests.forEach(fn);
     }
 
-    enableTimeouts() {
-
-    }
+    enableTimeouts() {}
 
     run() {
         return q()
-            .then(this._execRunnables(this.beforeAllHooks))
+            .then(this._execRunnables(this._beforeAll))
             .then(() => this.tests.reduce((acc, test) => {
                 return acc
                     .then(() => {
                         const setContextToHook = (hook) => hook.ctx.currentTest = test;
 
-                        this.beforeEachHooks.forEach(setContextToHook);
-                        this.afterEachHooks.forEach(setContextToHook);
+                        this._beforeEach.forEach(setContextToHook);
+                        this._afterEach.forEach(setContextToHook);
                     })
-                    .then(this._execRunnables(this.beforeEachHooks))
+                    .then(this._execRunnables(this._beforeEach))
                     .then(() => test.run())
                     .catch((error) => this.emit('fail', {error, test}))
-                    .then(this._execRunnables(this.afterEachHooks));
+                    .then(this._execRunnables(this._afterEach));
             }, q()))
             .then(this._execRunnables(this.suites, []))
-            .then(this._execRunnables(this.afterAllHooks));
+            .then(this._execRunnables(this._afterAll));
     }
 
     _execRunnables(runnables) {
