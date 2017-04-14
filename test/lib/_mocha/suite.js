@@ -35,6 +35,14 @@ module.exports = class Suite extends EventEmitter {
         return this._suites;
     }
 
+    get beforeAllHooks() {
+        return this._beforeAll;
+    }
+
+    get beforeEachHooks() {
+        return this._beforeEach;
+    }
+
     fullTitle() {
         return `${this.parent.title} ${this.title}`;
     }
@@ -86,14 +94,21 @@ module.exports = class Suite extends EventEmitter {
     }
 
     addTest(options) {
-        options = options || {};
+        let test;
 
-        const test = Test.create(this);
+        if (options instanceof Test) {
+            test = options;
+            test.parent = this;
+        } else {
+            options = options || {};
 
-        test.title = options.title || 'some-test';
-        test.fn = options.cb || _.noop;
-        test.file = options.file || null;
-        test.pending = options.skipped || false;
+            test = Test.create(this);
+
+            test.title = options.title || 'some-test';
+            test.fn = options.cb || _.noop;
+            test.file = options.file || null;
+            test.pending = options.skipped || false;
+        }
 
         this.tests.push(test);
         this.emit('test', test);
