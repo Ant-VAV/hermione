@@ -191,18 +191,20 @@ describe('mocha-runner/mocha-adapter', () => {
         });
 
         it('should disable mocha timeouts while setting browser hooks', () => {
-            sandbox.stub(MochaStub.Suite.prototype, 'enableTimeouts').onFirstCall().returns(true);
-            const beforeAllStub = sandbox.stub(MochaStub.Suite.prototype, 'beforeAll');
-            const afterAllStub = sandbox.stub(MochaStub.Suite.prototype, 'afterAll');
+            const suitePrototype = MochaStub.Suite.prototype;
+
+            sandbox.stub(suitePrototype, 'enableTimeouts').onFirstCall().returns(true);
+            const beforeAllStub = sandbox.stub(suitePrototype, 'beforeAll');
+            const afterAllStub = sandbox.stub(suitePrototype, 'afterAll');
 
             mkMochaAdapter_();
 
             assert.callOrder(
-                MochaStub.Suite.prototype.enableTimeouts, // get current value of enableTimeouts
-                MochaStub.Suite.prototype.enableTimeouts.withArgs(false).named('disableTimeouts'),
+                suitePrototype.enableTimeouts, // get current value of enableTimeouts
+                suitePrototype.enableTimeouts.withArgs(false).named('disableTimeouts'),
                 beforeAllStub,
                 afterAllStub,
-                MochaStub.Suite.prototype.enableTimeouts.withArgs(true).named('restoreTimeouts')
+                suitePrototype.enableTimeouts.withArgs(true).named('restoreTimeouts')
             );
         });
 
