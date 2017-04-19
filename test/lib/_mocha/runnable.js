@@ -1,17 +1,15 @@
 'use strict';
 
-const _ = require('lodash');
-
 module.exports = class Runnable {
-    constructor(parent) {
-        this.title = '';
-        this.fn = _.noop;
+    constructor(parent, options) {
+        this.title = options.title;
+        this.fn = options.fn;
         this.parent = parent;
         this.ctx = {};
     }
 
-    static create(parent) {
-        return new this(parent);
+    static create(parent, options) {
+        return new this(parent, options);
     }
 
     fullTitle() {

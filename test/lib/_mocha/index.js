@@ -8,10 +8,10 @@ class Mocha {
         this._suite = Suite.create();
         this.constructor._instance = this;
 
-        this.constructor.prototype.addFile = sinon.stub();
-        this.constructor.prototype.loadFiles = sinon.stub();
-        this.constructor.prototype.reporter = sinon.stub();
-        this.constructor.prototype.fullTrace = sinon.stub();
+        this.addFile = sinon.stub();
+        this.loadFiles = sinon.stub();
+        this.reporter = sinon.stub();
+        this.fullTrace = sinon.stub();
 
         this.constructorArgs = options;
     }

@@ -1,14 +1,17 @@
 'use strict';
 
+const _ = require('lodash');
 const Runnable = require('./runnable');
 
 module.exports = class Test extends Runnable {
-    constructor(parent) {
-        super(parent);
+    constructor(parent, options) {
+        options = options || {};
 
-        this.title = 'default-title';
+        super(parent, options);
 
-        this.file = null;
-        this.pending = false;
+        this.title = options.title || 'some-test';
+        this.fn = options.fn || _.noop;
+        this.file = options.file || null;
+        this.pending = options.skipped || false;
     }
 };

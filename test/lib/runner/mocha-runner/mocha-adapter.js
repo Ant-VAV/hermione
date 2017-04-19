@@ -65,7 +65,7 @@ describe('mocha-runner/mocha-adapter', () => {
         it('should enable full stacktrace in mocha', () => {
             mkMochaAdapter_();
 
-            assert.called(MochaStub.prototype.fullTrace);
+            assert.called(MochaStub.getInstance().fullTrace);
         });
     });
 
@@ -75,8 +75,8 @@ describe('mocha-runner/mocha-adapter', () => {
 
             mochaAdapter.addFiles(['path/to/file']);
 
-            assert.calledOnce(MochaStub.prototype.addFile);
-            assert.calledWith(MochaStub.prototype.addFile, 'path/to/file');
+            assert.calledOnce(MochaStub.getInstance().addFile);
+            assert.calledWith(MochaStub.getInstance().addFile, 'path/to/file');
         });
 
         it('should clear require cache for file before adding', () => {
@@ -85,7 +85,7 @@ describe('mocha-runner/mocha-adapter', () => {
             mochaAdapter.addFiles(['path/to/file']);
 
             assert.calledWithMatch(clearRequire, 'path/to/file');
-            assert.callOrder(clearRequire, MochaStub.prototype.addFile);
+            assert.callOrder(clearRequire, MochaStub.getInstance().addFile);
         });
 
         it('should load files after add', () => {
@@ -93,8 +93,8 @@ describe('mocha-runner/mocha-adapter', () => {
 
             mochaAdapter.addFiles(['path/to/file']);
 
-            assert.calledOnce(MochaStub.prototype.loadFiles);
-            assert.callOrder(MochaStub.prototype.addFile, MochaStub.prototype.loadFiles);
+            assert.calledOnce(MochaStub.getInstance().loadFiles);
+            assert.callOrder(MochaStub.getInstance().addFile, MochaStub.getInstance().loadFiles);
         });
 
         describe('hermione global', () => {
@@ -408,7 +408,7 @@ describe('mocha-runner/mocha-adapter', () => {
             const mochaAdapter = mkMochaAdapter_();
             mochaAdapter.attachTestFilter();
 
-            MochaStub.getInstance().updateSuiteTree((suite) => suite.addTest('some-test'));
+            MochaStub.getInstance().updateSuiteTree((suite) => suite.addTest({title: 'some-test'}));
 
             const tests = MochaStub.getInstance().suite.tests;
 
@@ -444,7 +444,7 @@ describe('mocha-runner/mocha-adapter', () => {
         function attachEmitFn_(emitFn) {
             mochaAdapter.attachEmitFn(emitFn);
 
-            const Reporter = MochaStub.prototype.reporter.lastCall.args[0];
+            const Reporter = MochaStub.getInstance().reporter.lastCall.args[0];
             new Reporter(); // eslint-disable-line no-new
         }
 
@@ -564,51 +564,45 @@ describe('mocha-runner/mocha-adapter', () => {
                 .updateSuiteTree((suite) => {
                     return suite
                         .beforeAll(sandbox.stub().returns(q.reject(new Error('some-error'))))
-                        .addTest('some-test', testCb);
+                        .addTest({fn: testCb});
                 })
                 .run()
                 .then(() => assert.notCalled(testCb));
         });
 
         it('should fail suite tests with error thrown from "before" hook', () => {
-            const error = new Error('some-error');
-            const onErrorSpy = sinon.spy();
+            const error = new Error();
+            const testFailSpy = sinon.spy();
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => {
-                    const _suite = suite
+                    return suite
                         .beforeAll(sandbox.stub().returns(q.reject(error)))
-                        .addTest('some-test');
-
-                    _suite.on('fail', onErrorSpy);
-
-                    return _suite;
+                        .addTest({title: 'some-test'})
+                        .subscribeOnTestFail(testFailSpy);
                 })
                 .run()
                 .then(() => {
-                    const args = onErrorSpy.firstCall.args[0];
+                    const args = testFailSpy.firstCall.args[0];
                     assert.equal(args.error, error);
                     assert.equal(args.test.title, 'some-test');
                 });
         });
 
         it('should handle sync "before hook" errors', () => {
-            const error = new Error('some-error');
-            const onErrorSpy = sinon.spy();
+            const error = new Error();
+            const testFailSpy = sinon.spy();
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => {
-                    const _suite = suite
+                    return suite
                         .beforeAll(sandbox.stub().throws(error))
-                        .addTest('some-test');
-
-                    _suite.on('fail', onErrorSpy);
-
-                    return _suite;
+                        .addTest({title: 'some-test'})
+                        .subscribeOnTestFail(testFailSpy);
                 })
                 .run()
                 .then(() => {
-                    const args = onErrorSpy.firstCall.args[0];
+                    const args = testFailSpy.firstCall.args[0];
                     assert.equal(args.error, error);
                     assert.equal(args.test.title, 'some-test');
                 });
@@ -620,32 +614,29 @@ describe('mocha-runner/mocha-adapter', () => {
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => {
                     return suite
-                        .beforeAll(sandbox.stub().returns(q.reject(new Error('some-error'))))
+                        .beforeAll(sandbox.stub().returns(q.reject(new Error())))
                         .beforeEach(beforeEachHookFn)
-                        .addTest('some-test');
+                        .addTest();
                 })
                 .run()
                 .then(() => assert.notCalled(beforeEachHookFn));
         });
 
         it('should fail test with error from "before" hook if before each hook was executed successfully', () => {
-            const error = new Error('some-error');
-            const onErrorSpy = sinon.spy();
+            const error = new Error();
+            const hookFailSpy = sinon.spy();
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => {
-                    const _suite = suite
+                    return suite
                         .beforeAll(sandbox.stub().returns(q.reject(error)))
                         .beforeAll(sandbox.stub().returns(true))
-                        .addTest('some-test');
-
-                    _suite.on('fail', onErrorSpy);
-
-                    return _suite;
+                        .addTest()
+                        .subscribeOnRunnableFail(hookFailSpy);
                 })
                 .run()
                 .then(() => {
-                    const args = onErrorSpy.firstCall.args[0];
+                    const args = hookFailSpy.firstCall.args[0];
                     assert.equal(args.error, error);
                     assert.equal(args.runnable.title, 'before all');
                 });
@@ -666,8 +657,8 @@ describe('mocha-runner/mocha-adapter', () => {
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => {
                     return suite
-                        .beforeEach(sandbox.stub().returns(q.reject(new Error('some-error'))))
-                        .addTest('some-test', testCb);
+                        .beforeEach(sandbox.stub().returns(q.reject(new Error())))
+                        .addTest({fn: testCb});
                 })
                 .run()
                 .then(() => assert.notCalled(testCb));
@@ -680,67 +671,63 @@ describe('mocha-runner/mocha-adapter', () => {
                 .updateSuiteTree((suite) => {
                     return suite
                         .beforeEach(_.noop)
-                        .addTest({title: 'some-test', cb: testCb});
+                        .addTest({fn: testCb});
                 })
                 .run()
                 .then(() => assert.called(testCb));
         });
 
         it('should fail test with error from "before each" hook', () => {
-            const error = new Error('some-error');
-            const onErrorSpy = sinon.spy();
+            const error = new Error();
+            const testFailSpy = sinon.spy();
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => {
-                    const _suite = suite
+                    return suite
                         .beforeEach(sandbox.stub().returns(q.reject(error)))
-                        .addTest({title: 'some-test'});
-
-                    _suite.on('fail', onErrorSpy);
-                    return _suite;
+                        .addTest({title: 'some-test'})
+                        .subscribeOnTestFail(testFailSpy);
                 })
                 .run()
                 .then(() => {
-                    const args = onErrorSpy.firstCall.args[0];
+                    const args = testFailSpy.firstCall.args[0];
                     assert.equal(args.error, error);
                     assert.equal(args.test.title, 'some-test');
                 });
         });
 
         it('should handle sync "before each" hook errors', () => {
-            const error = new Error('some-error');
-            const onErrorSpy = sinon.spy();
+            const error = new Error();
+            const testFailSpy = sinon.spy();
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => {
-                    const _suite = suite
+                    return suite
                         .beforeEach(sandbox.stub().throws(error))
-                        .addTest('some-test');
-
-                    _suite.on('fail', onErrorSpy);
-                    return _suite;
+                        .addTest({title: 'some-test'})
+                        .subscribeOnTestFail(testFailSpy);
                 })
                 .run()
                 .then(() => {
-                    const args = onErrorSpy.firstCall.args[0];
+                    const args = testFailSpy.firstCall.args[0];
                     assert.equal(args.error, error);
                     assert.equal(args.test.title, 'some-test');
                 });
         });
 
         it('should never fail beforeEach hook even it has errors', () => {
-            const beforeEachHookStub = sandbox.stub().throws(new Error('some-error'));
+            const beforeEachHookStub = sandbox.stub().throws(new Error());
             let beforeEachHookSpy;
 
             return MochaStub.getInstance()
                 .updateSuiteTree((suite) => {
-                    const _suite = suite
+                    suite = suite
                         .beforeEach(beforeEachHookStub)
                         .addTest();
 
-                    beforeEachHookSpy = sinon.spy(_suite.beforeEachHooks[0].fn);
+                    beforeEachHookSpy = sinon.spy(suite.beforeEachHooks[0].fn);
 
-                    return _suite;
+                    return suite;
                 })
                 .run()
                 .then(() => assert.doesNotThrow(beforeEachHookSpy));

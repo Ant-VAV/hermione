@@ -1,10 +1,14 @@
 'use strict';
 
 const q = require('q');
-const _ = require('lodash');
 const EventEmitter = require('events').EventEmitter;
 const Runnable = require('./runnable');
 const Test = require('./test');
+
+const EVENTS = {
+    TEST_FAIL: 'TEST_FAIL',
+    RUNNABLE_FAIL: 'RUNNABLE_FAIL'
+};
 
 module.exports = class Suite extends EventEmitter {
     constructor(parent) {
@@ -43,53 +47,58 @@ module.exports = class Suite extends EventEmitter {
         return this._beforeEach;
     }
 
+    get afterEachHooks() {
+        return this._afterEach;
+    }
+
+    get afterAllHooks() {
+        return this._afterAll;
+    }
+
     fullTitle() {
         return `${this.parent.title} ${this.title}`;
     }
 
-    beforeAll(cb) {
+    beforeAll(fn) {
         return this._createHook({
             title: 'before all',
             collection: this._beforeAll,
             event: 'beforeAll',
-            cb
+            fn
         });
     }
 
-    beforeEach(cb) {
+    beforeEach(fn) {
         return this._createHook({
             title: 'before each',
             collection: this._beforeEach,
             event: 'beforeEach',
-            cb
+            fn
         });
     }
 
-    afterEach(cb) {
+    afterEach(fn) {
         return this._createHook({
             title: 'after each',
             collection: this._afterEach,
             event: 'afterEach',
-            cb
+            fn
         });
     }
 
-    afterAll(cb) {
+    afterAll(fn) {
         return this._createHook({
             title: 'after all',
             collection: this._afterAll,
             event: 'afterAll',
-            cb
+            fn
         });
     }
 
-    _createHook(props) {
-        const hook = Runnable.create(this);
-        hook.title = props.title;
-        hook.fn = props.cb;
-
-        props.collection.push(hook);
-        this.emit(props.event, hook);
+    _createHook(options) {
+        const hook = Runnable.create(this, options);
+        options.collection.push(hook);
+        this.emit(options.event, hook);
         return this;
     }
 
@@ -100,14 +109,7 @@ module.exports = class Suite extends EventEmitter {
             test = options;
             test.parent = this;
         } else {
-            options = options || {};
-
-            test = Test.create(this);
-
-            test.title = options.title || 'some-test';
-            test.fn = options.cb || _.noop;
-            test.file = options.file || null;
-            test.pending = options.skipped || false;
+            test = Test.create(this, options);
         }
 
         this.tests.push(test);
@@ -123,6 +125,16 @@ module.exports = class Suite extends EventEmitter {
         return this;
     }
 
+    subscribeOnTestFail(cb) {
+        this.on(EVENTS.TEST_FAIL, cb);
+        return this;
+    }
+
+    subscribeOnRunnableFail(cb) {
+        this.on(EVENTS.RUNNABLE_FAIL, cb);
+        return this;
+    }
+
     eachTest(fn) {
         this.tests.forEach(fn);
     }
@@ -131,29 +143,29 @@ module.exports = class Suite extends EventEmitter {
 
     run() {
         return q()
-            .then(this._execRunnables(this._beforeAll))
+            .then(this._execRunnables(this.beforeAllHooks))
             .then(() => this.tests.reduce((acc, test) => {
                 return acc
                     .then(() => {
                         const setContextToHook = (hook) => hook.ctx.currentTest = test;
 
-                        this._beforeEach.forEach(setContextToHook);
-                        this._afterEach.forEach(setContextToHook);
+                        this.beforeEachHooks.forEach(setContextToHook);
+                        this.afterEachHooks.forEach(setContextToHook);
                     })
-                    .then(this._execRunnables(this._beforeEach))
+                    .then(this._execRunnables(this.beforeEachHooks))
                     .then(() => test.run())
-                    .catch((error) => this.emit('fail', {error, test}))
-                    .then(this._execRunnables(this._afterEach));
+                    .catch((error) => this.emit(EVENTS.TEST_FAIL, {error, test}))
+                    .then(this._execRunnables(this.afterEachHooks));
             }, q()))
             .then(this._execRunnables(this.suites, []))
-            .then(this._execRunnables(this._afterAll));
+            .then(this._execRunnables(this.afterAllHooks));
     }
 
     _execRunnables(runnables) {
         return () => runnables.reduce((acc, runnable) => {
             return acc
                 .then(() => runnable.run())
-                .catch((error) => this.emit('fail', {error, runnable}));
+                .catch((error) => this.emit(EVENTS.RUNNABLE_FAIL, {error, runnable}));
         }, q());
     }
 };
