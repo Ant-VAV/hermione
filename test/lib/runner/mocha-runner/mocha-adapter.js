@@ -647,7 +647,7 @@ describe('mocha-runner/mocha-adapter', () => {
                 .then(() => {
                     const args = onErrorSpy.firstCall.args[0];
                     assert.equal(args.error, error);
-                    assert.equal(args.test.title, 'some-test');
+                    assert.equal(args.runnable.title, 'before all');
                 });
         });
     });
@@ -743,9 +743,7 @@ describe('mocha-runner/mocha-adapter', () => {
                     return _suite;
                 })
                 .run()
-                .then(() => {
-                    assert.doesNotThrow(beforeEachHookSpy);
-                });
+                .then(() => assert.doesNotThrow(beforeEachHookSpy));
         });
     });
 });

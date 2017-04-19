@@ -19,6 +19,6 @@ module.exports = class Runnable {
     }
 
     run() {
-        this.fn();
+        return this.fn();
     }
 };
